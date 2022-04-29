@@ -20,6 +20,8 @@ namespace EnglishTreiner
 /check <eng> <rus> - Проверка правильности перевода английского слова.";
 
         static Tutor tutor = new Tutor();
+        static bool flag = false;
+        static string userWord;
 
         static void Main(string[] args)
         {
@@ -57,25 +59,35 @@ namespace EnglishTreiner
             Console.WriteLine($"Получено сообщение: '{messageText}' из чата: {chatId}, от usera {update.Message.From.FirstName}");
 
             // обрабатываем ответ пользователя
-            switch (argsMessage[0])
+
+            if(flag)
             {
-                case "/start":
-                    textForMessage = COMMAND_LIST;
-                    break;
-                case "/add":
-                    textForMessage = AddNewWords(argsMessage);
-                    break;
-                case "/get":
-                    textForMessage = "Ваше слово: " + tutor.GetRandomEngWord() + ". Как оно переводится?";
-                    break;
-                case "/check":
-                    textForMessage = CheckWord(argsMessage);
-                    break;
-                default:
-                    textForMessage = "Я еще тупенький... знаю только эти комманды.\n" + COMMAND_LIST;
-                    break;
+                textForMessage = CheckWord(userWord);
             }
-            
+            else
+            {
+                switch (argsMessage[0])
+                {
+                    case "/start":
+                        textForMessage = COMMAND_LIST;
+                        break;
+                    case "/add":
+                        textForMessage = AddNewWords(argsMessage);
+                        break;
+                    case "/get":
+                        userWord = tutor.GetRandomEngWord();
+                        flag = true;
+                        textForMessage = $"Ваше слово: {userWord}. Как оно переводится?";
+                        break;
+                    case "/check":
+                        textForMessage = CheckWord(argsMessage);
+                        break;
+                    default:
+                        textForMessage = "Я еще тупенький... знаю только эти комманды.\n" + COMMAND_LIST;
+                        break;
+                }
+            }
+
             await botClient.SendTextMessageAsync(
             chatId,
             text: textForMessage,
@@ -99,6 +111,20 @@ namespace EnglishTreiner
                 }
             }
         }
+        private static string CheckWord(string argsMessage)
+        {
+            if (tutor.CheckWord(userWord, argsMessage))
+            {
+                flag = false;
+                return "Верно!";
+            }
+            else
+            {
+                flag = false;
+                var currentAnswer=tutor.Translate(userWord);
+                return $"Перевод из словаря: {currentAnswer}";
+            }
+        }
         // Добавление нового слова в словарь
         private static string AddNewWords(string[] argsMessage)
         {
@@ -116,7 +142,7 @@ namespace EnglishTreiner
 
         static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            Console.WriteLine("hui=>pizda=>Gigurda (Походу нет интернета:)");
+            Console.WriteLine("hui=>pizda=>Gigurda (Походу нет интернета)");
             return Task.CompletedTask;
         }
     }
