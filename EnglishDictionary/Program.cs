@@ -5,6 +5,7 @@ using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace EnglishTreiner
 {
@@ -12,20 +13,21 @@ namespace EnglishTreiner
     {
         //бот
         static TelegramBotClient Bot;
+        // предложенное слово для конкретного пользователя
+        static Dictionary<int, string> lastUserWord = new Dictionary<int, string>();
         //список команд
         const string COMMAND_LIST = 
 @"Список комманд:
 /add <eng> <rus> - Добавление английского слова и его перевода в словарь;
 /get - Получаем случайное английское слово из словаря;
+/get <eng> - Получаем перевод введенного английского слова из словаря;
 /check <eng> <rus> - Проверка правильности перевода английского слова.";
 
         static Tutor tutor = new Tutor();
-        static bool flag = false;
-        static string userWord;
 
         static void Main(string[] args)
         {
-
+ 
             Bot = new TelegramBotClient("5334725873:AAFxwsLjCUdR04ptxvGGuCtr_cNtE3WCP-E");
             var cts = new CancellationTokenSource();
             // StartReceiving не блокирует вызывающий поток. Receiving is done on the ThreadPool.
@@ -37,10 +39,8 @@ namespace EnglishTreiner
                 cancellationToken: cts.Token);
 
             var me = Bot.GetMeAsync();
-            //Console.WriteLine($"Даров, я бот {me.Result.FirstName}");
             Console.WriteLine($"Слушаем чат-бот @{me.Result.Username}:");
             Console.ReadLine();
-            // Send cancellation request to stop bot
             cts.Cancel();
         }
 
@@ -54,44 +54,60 @@ namespace EnglishTreiner
             var messageText = update.Message.Text;
             //получаем массив из ответа пользователя
             var argsMessage = messageText.Split(' ');
+            var userId = (int)update.Message.From.Id;
             String textForMessage;
 
             Console.WriteLine($"Получено сообщение: '{messageText}' из чата: {chatId}, от usera {update.Message.From.FirstName}");
 
             // обрабатываем ответ пользователя
-
-            if(flag)
+            switch (argsMessage[0])
             {
-                textForMessage = CheckWord(userWord);
-            }
-            else
-            {
-                switch (argsMessage[0])
-                {
-                    case "/start":
-                        textForMessage = COMMAND_LIST;
-                        break;
-                    case "/add":
-                        textForMessage = AddNewWords(argsMessage);
-                        break;
-                    case "/get":
-                        userWord = tutor.GetRandomEngWord();
-                        flag = true;
-                        textForMessage = $"Ваше слово: {userWord}. Как оно переводится?";
-                        break;
-                    case "/check":
-                        textForMessage = CheckWord(argsMessage);
-                        break;
-                    default:
-                        textForMessage = "Я еще тупенький... знаю только эти комманды.\n" + COMMAND_LIST;
-                        break;
-                }
+                case "/start":
+                    textForMessage = COMMAND_LIST;
+                    break;
+                case "/add":
+                    textForMessage = AddNewWords(argsMessage);
+                    break;
+                case "/get":
+                    if (argsMessage.Length > 1)
+                    {
+                        textForMessage = tutor.Translate(argsMessage[1]);
+                    }
+                    else
+                    {
+                        textForMessage = $"Ваше слово: {GetRandomEngWord(userId)}. Как оно переводится?";
+                    }
+                    break;
+                case "/check":
+                    textForMessage = CheckWord(argsMessage);
+                    break;
+                default:
+                    if (lastUserWord.ContainsKey(userId))
+                    {
+                        textForMessage = CheckWord(lastUserWord[userId], argsMessage[0]);
+                    }
+                    else
+                        textForMessage = "Я еще тупенький... знаю только эти команды.\n" + COMMAND_LIST;
+                    break;
             }
 
             await botClient.SendTextMessageAsync(
             chatId,
             text: textForMessage,
             cancellationToken: cancellationToken);
+        }
+
+        //  Добавляем слово для конкретного юзера
+        private static string GetRandomEngWord(int userId)
+        {
+            var ranWord = tutor.GetRandomEngWord();
+            
+            if(lastUserWord.ContainsKey(userId))
+                lastUserWord[userId] = ranWord;
+            else
+                lastUserWord.Add(userId, ranWord);
+
+            return ranWord;
         }
 
         // Проверка слов
@@ -111,20 +127,18 @@ namespace EnglishTreiner
                 }
             }
         }
-        private static string CheckWord(string argsMessage)
+
+        private static string CheckWord(string engl, string transl)
         {
-            if (tutor.CheckWord(userWord, argsMessage))
-            {
-                flag = false;
-                return "Верно!";
-            }
+            if (tutor.CheckWord(engl, transl))
+                return "Правильно!";
             else
             {
-                flag = false;
-                var currentAnswer=tutor.Translate(userWord);
-                return $"Перевод из словаря: {currentAnswer}";
+                var correctAnswer = tutor.Translate(engl);
+                return $"Перевод из словаря: {correctAnswer}";
             }
         }
+
         // Добавление нового слова в словарь
         private static string AddNewWords(string[] argsMessage)
         {
@@ -142,7 +156,7 @@ namespace EnglishTreiner
 
         static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            Console.WriteLine("hui=>pizda=>Gigurda (Походу нет интернета)");
+            Console.WriteLine("нет интернета)");
             return Task.CompletedTask;
         }
     }
