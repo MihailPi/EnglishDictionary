@@ -23,7 +23,7 @@ namespace EnglishTreiner
 /add <eng> <rus> - Добавление английского слова и его перевода в словарь в одну строку;
 /getEng - Получаем случайное английское слово из словаря;
 /getRus - Получаем случайное русское слово из словаря;
-/get <eng> или /get <rus> - Получаем перевод введенного слова из словаря;
+/get - Получаем перевод введенного слова из словаря;
 /check - Проверка правильности перевода английского слова;
 /check <eng> <rus> - Проверка правильности перевода английского слова в одну строку;
 /command - Список команд.";
@@ -34,6 +34,7 @@ namespace EnglishTreiner
         static bool transFlag = false;
         static bool enFlag = false;
         static bool checkFlag = false;
+        static bool getFlag = false;
         static void Main(string[] args)
         {
  
@@ -67,7 +68,11 @@ namespace EnglishTreiner
             var userId = (int)update.Message.From.Id;
             String textForMessage;
             //  Кнопки
-            KeyboardButton[] button = new KeyboardButton[] { "/getRus", "/getEng","/check", "/add", "/command" };
+            KeyboardButton[][] button = new KeyboardButton[][] 
+            { 
+                new KeyboardButton[]{ "/get", "/getRus", "/getEng" }, 
+                new KeyboardButton[]{ "/check", "/add", "/command" } 
+            };
 
             ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(button);
             replyKeyboardMarkup.ResizeKeyboard = true;
@@ -94,7 +99,13 @@ namespace EnglishTreiner
                     }
                     break;
                 case "/get":
-                    textForMessage = tutor.Translate(argsMessage[1]);
+                    if(argsMessage.Length > 1)
+                        textForMessage = tutor.Translate(argsMessage[1]);
+                    else
+                    {
+                        getFlag = true;
+                        textForMessage = "Введите слово которое нужно найти в словаре.";
+                    }    
                     break;
                 case "/getEng":         //  Передаем в функцию true получим английское слово
                     textForMessage = $"Ваше слово: {GetRandomWord(userId, true)}. Как оно переводится?";
@@ -112,7 +123,7 @@ namespace EnglishTreiner
                     }
                     break;
                 default:
-                    if (lastUserWord.ContainsKey(userId) && !enFlag && !transFlag && !checkFlag)
+                    if (lastUserWord.ContainsKey(userId) && !enFlag && !transFlag && !checkFlag && !getFlag)
                     {
                         textForMessage = CheckWord(lastUserWord[userId], argsMessage[0]);
                     }
@@ -134,6 +145,11 @@ namespace EnglishTreiner
                         textForMessage = "Введите перевод.";
                         checkFlag = false;
                     }
+                    else if(getFlag)
+                    {
+                        textForMessage = tutor.Translate(argsMessage[0]);
+                        getFlag = false;
+                    }
                     else
                         textForMessage = "Я еще тупенький... знаю только эти команды.\n" + COMMAND_LIST;
                     break;
@@ -144,6 +160,7 @@ namespace EnglishTreiner
             text: textForMessage,
             replyMarkup:replyKeyboardMarkup,
             cancellationToken: cancellationToken);
+        
         
         }
 
@@ -178,13 +195,13 @@ namespace EnglishTreiner
             }
         }
 
-        private static string CheckWord(string engl, string transl)
+        private static string CheckWord(string worForTransl, string transl)
         {
-            if (tutor.CheckWord(engl, transl))
+            if (tutor.CheckWord(worForTransl, transl))
                 return "Правильно!";
             else
             {
-                var correctAnswer = tutor.Translate(engl);
+                var correctAnswer = tutor.Translate(worForTransl);
                 return $"Перевод из словаря: {correctAnswer}";
             }
         }
