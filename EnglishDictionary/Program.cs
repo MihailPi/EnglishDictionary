@@ -4,6 +4,7 @@ using Telegram.Bot;
 using Telegram.Bot.Extensions.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 using System.Threading;
 using System.Collections.Generic;
 
@@ -16,15 +17,23 @@ namespace EnglishTreiner
         // предложенное слово для конкретного пользователя
         static Dictionary<int, string> lastUserWord = new Dictionary<int, string>();
         //список команд
-        const string COMMAND_LIST = 
-@"Список комманд:
-/add <eng> <rus> - Добавление английского слова и его перевода в словарь;
-/get - Получаем случайное английское слово из словаря;
-/get <eng> - Получаем перевод введенного английского слова из словаря;
-/check <eng> <rus> - Проверка правильности перевода английского слова.";
+        const string COMMAND_LIST =
+@"Список команд:
+/add - Добавление нового слова в словарь
+/add <eng> <rus> - Добавление английского слова и его перевода в словарь в одну строку;
+/getEng - Получаем случайное английское слово из словаря;
+/getRus - Получаем случайное русское слово из словаря;
+/get <eng> или /get <rus> - Получаем перевод введенного слова из словаря;
+/check - Проверка правильности перевода английского слова;
+/check <eng> <rus> - Проверка правильности перевода английского слова в одну строку;
+/command - Список команд.";
 
         static Tutor tutor = new Tutor();
-
+        static string nameBot;
+        //  Флаги для поочередного ввода слов
+        static bool transFlag = false;
+        static bool enFlag = false;
+        static bool checkFlag = false;
         static void Main(string[] args)
         {
  
@@ -39,7 +48,8 @@ namespace EnglishTreiner
                 cancellationToken: cts.Token);
 
             var me = Bot.GetMeAsync();
-            Console.WriteLine($"Слушаем чат-бот @{me.Result.Username}:");
+            nameBot = me.Result.Username;
+            Console.WriteLine($"Слушаем чат-бот @{nameBot}:");
             Console.ReadLine();
             cts.Cancel();
         }
@@ -56,6 +66,11 @@ namespace EnglishTreiner
             var argsMessage = messageText.Split(' ');
             var userId = (int)update.Message.From.Id;
             String textForMessage;
+            //  Кнопки
+            KeyboardButton[] button = new KeyboardButton[] { "/getRus", "/getEng","/check", "/add", "/command" };
+
+            ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup(button);
+            replyKeyboardMarkup.ResizeKeyboard = true;
 
             Console.WriteLine($"Получено сообщение: '{messageText}' из чата: {chatId}, от usera {update.Message.From.FirstName}");
 
@@ -63,28 +78,61 @@ namespace EnglishTreiner
             switch (argsMessage[0])
             {
                 case "/start":
+                    textForMessage = $"Привет, я бот {nameBot}, и вот что я умею.\n" + COMMAND_LIST;
+                    break;
+                case "/command":
                     textForMessage = COMMAND_LIST;
                     break;
                 case "/add":
-                    textForMessage = AddNewWords(argsMessage);
+                    //  Если добавляем слово и перевод в одной строку
+                    if (argsMessage.Length > 1)
+                        textForMessage = AddNewWords(argsMessage);
+                    else
+                    {// Если поочереди
+                        enFlag = true;
+                        textForMessage = "Введите английское слово.";
+                    }
                     break;
                 case "/get":
-                    if (argsMessage.Length > 1)
-                    {
-                        textForMessage = tutor.Translate(argsMessage[1]);
-                    }
-                    else
-                    {
-                        textForMessage = $"Ваше слово: {GetRandomEngWord(userId)}. Как оно переводится?";
-                    }
+                    textForMessage = tutor.Translate(argsMessage[1]);
+                    break;
+                case "/getEng":         //  Передаем в функцию true получим английское слово
+                    textForMessage = $"Ваше слово: {GetRandomWord(userId, true)}. Как оно переводится?";
+                    break;
+                case "/getRus":          //  Передаем false - получим русское
+                    textForMessage = $"Ваше слово: {GetRandomWord(userId, false)}. Как оно переводится?";
                     break;
                 case "/check":
-                    textForMessage = CheckWord(argsMessage);
+                    if(argsMessage.Length > 1)
+                        textForMessage = CheckWord(argsMessage);
+                    else
+                    {
+                        checkFlag = true;
+                        textForMessage = "Введите английское слово.";
+                    }
                     break;
                 default:
-                    if (lastUserWord.ContainsKey(userId))
+                    if (lastUserWord.ContainsKey(userId) && !enFlag && !transFlag && !checkFlag)
                     {
                         textForMessage = CheckWord(lastUserWord[userId], argsMessage[0]);
+                    }
+                    else if(enFlag)
+                    {
+                        lastUserWord[userId] = argsMessage[0];
+                        textForMessage = "Введите перевод.";
+                        enFlag = false;
+                        transFlag = true;
+                    }
+                    else if(transFlag)
+                    {
+                        textForMessage = AddNewWords(lastUserWord[userId], argsMessage[0]);
+                        transFlag = false;
+                    }
+                    else if(checkFlag)
+                    {
+                        lastUserWord[userId] = argsMessage[0];
+                        textForMessage = "Введите перевод.";
+                        checkFlag = false;
                     }
                     else
                         textForMessage = "Я еще тупенький... знаю только эти команды.\n" + COMMAND_LIST;
@@ -94,13 +142,15 @@ namespace EnglishTreiner
             await botClient.SendTextMessageAsync(
             chatId,
             text: textForMessage,
+            replyMarkup:replyKeyboardMarkup,
             cancellationToken: cancellationToken);
+        
         }
 
-        //  Добавляем слово для конкретного юзера
-        private static string GetRandomEngWord(int userId)
+        //  Добавляем во временный словарь слово для конкретного юзера
+        private static string GetRandomWord(int userId, bool lang)
         {
-            var ranWord = tutor.GetRandomEngWord();
+            var ranWord = tutor.GetRandomEngOrRusWord(lang);
             
             if(lastUserWord.ContainsKey(userId))
                 lastUserWord[userId] = ranWord;
@@ -152,6 +202,15 @@ namespace EnglishTreiner
                 else
                     return "Такое слово уже есть в словаре!";
             }
+        }
+
+        private static string AddNewWords(string eng, string transl)
+        {
+            var check = tutor.AddWord(eng, transl);
+            if (check)
+                return "Слово добавленно в словарь!";
+            else
+                return "Такое слово уже есть в словаре!";
         }
 
         static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)

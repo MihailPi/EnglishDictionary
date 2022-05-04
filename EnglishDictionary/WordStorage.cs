@@ -15,7 +15,7 @@ namespace EnglishTreiner
                 File.Create(_path);
             }
         }
-        public Dictionary<string, string> GetAllWords()
+        public Dictionary<string, string> GetAllWords(bool howDict)
         {   
             var dic=new Dictionary<string, string>();
             try
@@ -26,8 +26,11 @@ namespace EnglishTreiner
                     {   //разделяем строку на массив из двух значений
                         var words = line.Split('|');
                         if (words.Length == 2)
-                        {
-                            dic.Add(words[0], words[1]);
+                        {       //  Создаем агло-рус и рус-англ словарь возвращаем какой нужно
+                                if (howDict)
+                                    dic.Add(words[0], words[1]);
+                                else
+                                    dic.Add(words[1], words[0]);
                         }
                     }
                 }
