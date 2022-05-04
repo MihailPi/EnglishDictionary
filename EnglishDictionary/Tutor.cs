@@ -53,21 +53,21 @@ namespace EnglishTreiner
         {
             if (_reg.Match(wordForCheck.ToLower()).Success)
             {
-                if (!_dictEng.ContainsKey(wordForCheck))
+                if (!_dictEng.ContainsKey(wordForCheck.ToLower()))
                     return false;
                 else
                 {
-                    var answer = _dictEng[wordForCheck];
+                    var answer = _dictEng[wordForCheck.ToLower()];
                     return answer.ToLower() == checkWord.ToLower();
                 }
             }
             else
             {
-                if (!_dictRus.ContainsKey(wordForCheck))
+                if (!_dictRus.ContainsKey(wordForCheck.ToLower()))
                     return false;
                 else
                 {
-                    var answer = _dictRus[wordForCheck];
+                    var answer = _dictRus[wordForCheck.ToLower()];
                     return answer.ToLower() == checkWord.ToLower();
                 }
             }

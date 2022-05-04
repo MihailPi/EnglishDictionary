@@ -99,13 +99,8 @@ namespace EnglishTreiner
                     }
                     break;
                 case "/get":
-                    if(argsMessage.Length > 1)
-                        textForMessage = tutor.Translate(argsMessage[1]);
-                    else
-                    {
-                        getFlag = true;
-                        textForMessage = "Введите слово которое нужно найти в словаре.";
-                    }    
+                    getFlag = true;
+                    textForMessage = "Введите слово которое нужно найти в словаре.";    
                     break;
                 case "/getEng":         //  Передаем в функцию true получим английское слово
                     textForMessage = $"Ваше слово: {GetRandomWord(userId, true)}. Как оно переводится?";
