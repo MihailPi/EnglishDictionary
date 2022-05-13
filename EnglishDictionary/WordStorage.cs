@@ -7,12 +7,17 @@ namespace EnglishTreiner
     public class WordStorage
     {
         private const string _path = "D:\\1MEDIA\\Исходники\\Visual Studio 2022\\EnglishDictionaryChatBot\\EnglishDictionary\\bin\\Debug\\Dict.txt";
+        private const string _pathKnow = "D:\\1MEDIA\\Исходники\\Visual Studio 2022\\EnglishDictionaryChatBot\\EnglishDictionary\\bin\\Debug\\KnowWord.txt";
 
         public WordStorage()
         {   //Если файла не существует создаем
             if(!File.Exists(_path))
             {
                 File.Create(_path);
+            }
+            if(!File.Exists(_pathKnow))
+            {
+                File.Create(_pathKnow);
             }
         }
         public Dictionary<string, string> GetAllWords(bool howDict)
@@ -50,13 +55,51 @@ namespace EnglishTreiner
             {
                 using (var sw = new StreamWriter(_path, true))
                 {   //добавляем строку с разделителем между словами
-                    sw.WriteLine($"{english}|{transl}");
+                    sw.WriteLine($"{english.ToLower()}|{transl.ToLower()}");
                 }
             }
             catch(Exception ex)
             {
                 Console.WriteLine($"Не удалось добавить слово {english} в словарь!");
                 Console.WriteLine(ex.Message);
+            }
+        }
+
+        public void AddKnowWord(string knowWord)
+        {
+            try
+            {
+                using(var sw = new StreamWriter(_pathKnow, true))
+                {
+                    sw.WriteLine(knowWord);   
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Не удалось записать слово {knowWord} в файл, возможно он не создан.");
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        public List<string> GetKnowWord()
+        {
+            var list = new List<string>();
+            try
+            {
+                 if(File.Exists(_pathKnow))
+                {
+                    foreach(var line in File.ReadAllLines(_pathKnow))
+                    {
+                        list.Add(line);
+                    }
+                }
+                return list;
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine("Не удалось считать выученые слова из файла");
+                Console.WriteLine(ex.Message);
+                return list;
             }
         }
     }

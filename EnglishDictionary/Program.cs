@@ -27,7 +27,13 @@ namespace EnglishTreiner
 /check - Проверка правильности перевода английского слова;
 /check <eng> <rus> - Проверка правильности перевода английского слова в одну строку;
 /command - Список команд.";
-
+        //  Список поздравительных фраз
+        static List<string> congratulation = new List<string>()
+        {
+            "Молодец!", "Орёл!", "Так держать!", "Гений!", "Боец!", "Круто!", "Хвалю!", "Молодцом!", "Cool!",
+            "Супер!", "Решительно!", "Да ты талантище!", "Юное дарование!", "Только вперёд!", "Моё почтение!"
+        };
+        static Random ranCong = new Random();
         static Tutor tutor = new Tutor();
         static string nameBot;
         //  Флаги для поочередного ввода слов
@@ -190,13 +196,24 @@ namespace EnglishTreiner
             }
         }
 
-        private static string CheckWord(string worForTransl, string transl)
+        private static string CheckWord(string wordForTransl, string transl)
         {
-            if (tutor.CheckWord(worForTransl, transl))
-                return "Правильно!";
+            if (tutor.CheckWord(wordForTransl, transl))
+            {   //  Добавляем в список с уже знакомыми словами, чтобы не повторялись
+                tutor.AddToKnow(wordForTransl);
+                //  Проверяем на кратность 10-ти
+                var checkWinCountWord = tutor.GetCountKnowWord();
+                if (checkWinCountWord % 10 == 0)
+                {
+                    var answer = congratulation[ranCong.Next(congratulation.Count)];
+                    return $"Правильно!\nТы уже запмонил перевод {checkWinCountWord} слов!\n{answer}";
+                }
+                else
+                    return "Правильно!";
+            }
             else
             {
-                var correctAnswer = tutor.Translate(worForTransl);
+                var correctAnswer = tutor.Translate(wordForTransl);
                 return $"Перевод из словаря: {correctAnswer}";
             }
         }
@@ -208,7 +225,7 @@ namespace EnglishTreiner
                 return "Аргументов у /add должно быть 2! (английское слово и перевод)";
             else
             {
-                var check = tutor.AddWord(argsMessage[1], argsMessage[2]);
+                var check = tutor.AddWord(argsMessage[1].ToLower(), argsMessage[2].ToLower());
                 if (check)
                     return "Слово добавленно в словарь!";
                 else
@@ -218,7 +235,7 @@ namespace EnglishTreiner
 
         private static string AddNewWords(string eng, string transl)
         {
-            var check = tutor.AddWord(eng, transl);
+            var check = tutor.AddWord(eng.ToLower(), transl.ToLower());
             if (check)
                 return "Слово добавленно в словарь!";
             else

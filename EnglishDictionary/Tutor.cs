@@ -9,12 +9,15 @@ namespace EnglishTreiner
         private Dictionary<string, string> _dictEng;
         private Dictionary<string, string> _dictRus;
         private WordStorage _storage = new WordStorage();
+        private List<string> _knowWord;
         private Random _random = new Random();
         private Regex _reg = new Regex("[a-z]");
+
         public Tutor()
         {   //Заполняем список уже имеющимися парами слов
             _dictEng = _storage.GetAllWords(true);
             _dictRus = _storage.GetAllWords(false);
+            _knowWord = _storage.GetKnowWord();
         }
         public bool AddWord(string wordForTranslate, string translate)
         {   //если еще нет такого слова
@@ -78,16 +81,38 @@ namespace EnglishTreiner
         public string GetRandomEngOrRusWord(bool lang)
         {
             var r = _random.Next(0, _dictEng.Count);
+            //  Если нужно английское слово, работаем с английским словарем
             if (lang)
             {
                 var keys = new List<string>(_dictEng.Keys);
-                return keys[r];
+                //  Если это слово уже выучили
+                if (_knowWord.Contains(keys[r]))
+                    return GetRandomEngOrRusWord(lang);
+                else
+                    return keys[r];
             }
+            //  Если русское, то с русским
             else
             {
                 var keys = new List<string>(_dictRus.Keys);
-                return keys[r];
+                //  Если это слово уже выучили
+                if (_knowWord.Contains(keys[r]))
+                    return GetRandomEngOrRusWord(lang);
+                else
+                    return keys[r];
             }
+        }
+
+        //  Добавляем в список слова которые уже знаем
+        public void AddToKnow(string knowWord)
+        {
+            _knowWord.Add(knowWord);
+            _storage.AddKnowWord(knowWord);
+        }
+
+        public int GetCountKnowWord()
+        {
+            return _knowWord.Count; 
         }
     }
 }
