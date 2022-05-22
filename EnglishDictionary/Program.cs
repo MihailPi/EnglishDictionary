@@ -19,13 +19,11 @@ namespace EnglishTreiner
         //список команд
         const string COMMAND_LIST =
 @"Список команд:
-/add - Добавление нового слова в словарь
-/add <eng> <rus> - Добавление английского слова и его перевода в словарь в одну строку;
-/getEng - Получаем случайное английское слово из словаря;
+/add - Добавление нового слова (фразы) в словарь
+/getEng - Получаем случайное английское слово (фразу) из словаря;
 /getRus - Получаем случайное русское слово из словаря;
 /get - Получаем перевод введенного слова из словаря;
-/check - Проверка правильности перевода английского слова;
-/check <eng> <rus> - Проверка правильности перевода английского слова в одну строку;
+/check - Проверка правильности перевода английского слова (фразы);
 /command - Список команд.";
         //  Список поздравительных фраз
         static List<string> congratulation = new List<string>()
@@ -70,7 +68,8 @@ namespace EnglishTreiner
             var chatId = update.Message.Chat.Id;
             var messageText = update.Message.Text;
             //получаем массив из ответа пользователя
-            var argsMessage = messageText.Split(' ');
+            
+            //var argsMessage = messageText.Split(' ');
             var userId = (int)update.Message.From.Id;
             String textForMessage;
             //  Кнопки
@@ -86,7 +85,7 @@ namespace EnglishTreiner
             Console.WriteLine($"Получено сообщение: '{messageText}' из чата: {chatId}, от usera {update.Message.From.FirstName}");
 
             // обрабатываем ответ пользователя
-            switch (argsMessage[0])
+            switch (messageText)
             {
                 case "/start":
                     textForMessage = $"Привет, я бот {nameBot}, и вот что я умею.\n" + COMMAND_LIST;
@@ -95,14 +94,8 @@ namespace EnglishTreiner
                     textForMessage = COMMAND_LIST;
                     break;
                 case "/add":
-                    //  Если добавляем слово и перевод в одной строку
-                    if (argsMessage.Length > 1)
-                        textForMessage = AddNewWords(argsMessage);
-                    else
-                    {// Если поочереди
-                        enFlag = true;
-                        textForMessage = "Введите английское слово.";
-                    }
+                    enFlag = true;
+                    textForMessage = "Введите английское слово (фразу).";
                     break;
                 case "/get":
                     getFlag = true;
@@ -115,40 +108,37 @@ namespace EnglishTreiner
                     textForMessage = $"Ваше слово: {GetRandomWord(userId, false)}. Как оно переводится?";
                     break;
                 case "/check":
-                    if(argsMessage.Length > 1)
-                        textForMessage = CheckWord(argsMessage);
-                    else
-                    {
-                        checkFlag = true;
-                        textForMessage = "Введите английское слово.";
-                    }
+                    checkFlag = true;
+                    textForMessage = "Введите английское слово (фразу).";
                     break;
                 default:
                     if (lastUserWord.ContainsKey(userId) && !enFlag && !transFlag && !checkFlag && !getFlag)
                     {
-                        textForMessage = CheckWord(lastUserWord[userId], argsMessage[0]);
+                        textForMessage = CheckWord(lastUserWord[userId], messageText);
+                        lastUserWord.Remove(userId);
                     }
                     else if(enFlag)
                     {
-                        lastUserWord[userId] = argsMessage[0];
+                        lastUserWord[userId] = messageText;
                         textForMessage = "Введите перевод.";
                         enFlag = false;
                         transFlag = true;
                     }
                     else if(transFlag)
                     {
-                        textForMessage = AddNewWords(lastUserWord[userId], argsMessage[0]);
+                        textForMessage = AddNewWords(lastUserWord[userId], messageText);
                         transFlag = false;
+                        lastUserWord.Remove(userId);
                     }
                     else if(checkFlag)
                     {
-                        lastUserWord[userId] = argsMessage[0];
+                        lastUserWord[userId] = messageText;
                         textForMessage = "Введите перевод.";
                         checkFlag = false;
                     }
                     else if(getFlag)
                     {
-                        textForMessage = tutor.Translate(argsMessage[0]);
+                        textForMessage = tutor.Translate(messageText);
                         getFlag = false;
                     }
                     else
@@ -179,23 +169,6 @@ namespace EnglishTreiner
         }
 
         // Проверка слов
-        private static string CheckWord(string[] argsMessage)
-        {
-            if (argsMessage.Length != 3)
-                return "Аргументов у /check должно быть 2! (английское слово и перевод)";
- 
-            else
-            {
-                if (tutor.CheckWord(argsMessage[1], argsMessage[2]))
-                    return "Верно! Главный приз: Автомобииииль!!!";
-                else
-                {
-                    var correctAnswer = tutor.Translate(argsMessage[1]);
-                    return $"Перевод из словаря: {correctAnswer}";
-                }
-            }
-        }
-
         private static string CheckWord(string wordForTransl, string transl)
         {
             if (tutor.CheckWord(wordForTransl, transl))
@@ -219,20 +192,6 @@ namespace EnglishTreiner
         }
 
         // Добавление нового слова в словарь
-        private static string AddNewWords(string[] argsMessage)
-        {
-            if (argsMessage.Length != 3)
-                return "Аргументов у /add должно быть 2! (английское слово и перевод)";
-            else
-            {
-                var check = tutor.AddWord(argsMessage[1].ToLower(), argsMessage[2].ToLower());
-                if (check)
-                    return "Слово добавленно в словарь!";
-                else
-                    return "Такое слово уже есть в словаре!";
-            }
-        }
-
         private static string AddNewWords(string eng, string transl)
         {
             var check = tutor.AddWord(eng.ToLower(), transl.ToLower());
