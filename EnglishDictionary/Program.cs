@@ -21,9 +21,10 @@ namespace EnglishTreiner
 @"Список команд:
 /add - Добавление нового слова (фразы) в словарь
 /getEng - Получаем случайное английское слово (фразу) из словаря;
-/getRus - Получаем случайное русское слово из словаря;
-/get - Получаем перевод введенного слова из словаря;
+/getRus - Получаем случайное русское слово (фразу) из словаря;
+/get - Получаем перевод введенного слова (фразы) из словаря;
 /check - Проверка правильности перевода английского слова (фразы);
+/howWord - Количество слов в словаре;
 /command - Список команд.";
         //  Список поздравительных фраз
         static List<string> congratulation = new List<string>()
@@ -44,7 +45,7 @@ namespace EnglishTreiner
  
             Bot = new TelegramBotClient("5334725873:AAFxwsLjCUdR04ptxvGGuCtr_cNtE3WCP-E");
             var cts = new CancellationTokenSource();
-            // StartReceiving не блокирует вызывающий поток. Receiving is done on the ThreadPool.
+            // StartReceiving не блокирует вызывающий поток
             var receiverOptions = new ReceiverOptions {AllowedUpdates = { }};
             Bot.StartReceiving(
                 HandleUpdateAsync,
@@ -67,9 +68,7 @@ namespace EnglishTreiner
 
             var chatId = update.Message.Chat.Id;
             var messageText = update.Message.Text;
-            //получаем массив из ответа пользователя
             
-            //var argsMessage = messageText.Split(' ');
             var userId = (int)update.Message.From.Id;
             String textForMessage;
             //  Кнопки
@@ -99,17 +98,20 @@ namespace EnglishTreiner
                     break;
                 case "/get":
                     getFlag = true;
-                    textForMessage = "Введите слово которое нужно найти в словаре.";    
+                    textForMessage = "Введите слово (фразу) которое нужно найти в словаре.";    
                     break;
                 case "/getEng":         //  Передаем в функцию true получим английское слово
-                    textForMessage = $"Ваше слово: {GetRandomWord(userId, true)}. Как оно переводится?";
+                    textForMessage = GetRandomWord(userId, true);
                     break;
                 case "/getRus":          //  Передаем false - получим русское
-                    textForMessage = $"Ваше слово: {GetRandomWord(userId, false)}. Как оно переводится?";
+                    textForMessage = GetRandomWord(userId, false);
                     break;
                 case "/check":
                     checkFlag = true;
                     textForMessage = "Введите английское слово (фразу).";
+                    break;
+                case "/howWord":
+                    textForMessage = $"В словаре сейчас {tutor.GetHowWordInDict} слов (фраз)! Ого!";
                     break;
                 default:
                     if (lastUserWord.ContainsKey(userId) && !enFlag && !transFlag && !checkFlag && !getFlag)
@@ -156,16 +158,22 @@ namespace EnglishTreiner
         }
 
         //  Добавляем во временный словарь слово для конкретного юзера
-        private static string GetRandomWord(int userId, bool lang)
+        private static string GetRandomWord(int userId, bool isEnglish)
         {
-            var ranWord = tutor.GetRandomEngOrRusWord(lang);
-            
-            if(lastUserWord.ContainsKey(userId))
-                lastUserWord[userId] = ranWord;
-            else
-                lastUserWord.Add(userId, ranWord);
+            var ranWord = tutor.GetRandomEngOrRusWord(isEnglish);
 
-            return ranWord;
+            if (ranWord != String.Empty)
+            {
+                if (lastUserWord.ContainsKey(userId))
+                    lastUserWord[userId] = ranWord;
+                else
+                    lastUserWord.Add(userId, ranWord);
+
+                return $"Ваше слово (фраза):{ranWord}. Как это переводится?";
+            }
+            else
+                return "Вы выучили ВСЕ слова и фразы из текущего словаря!";
+            
         }
 
         // Проверка слов
@@ -175,11 +183,11 @@ namespace EnglishTreiner
             {   //  Добавляем в список с уже знакомыми словами, чтобы не повторялись
                 tutor.AddToKnow(wordForTransl);
                 //  Проверяем на кратность 10-ти
-                var checkWinCountWord = tutor.GetCountKnowWord();
+                var checkWinCountWord = tutor.GetHowKnowWord;
                 if (checkWinCountWord % 10 == 0)
                 {
                     var answer = congratulation[ranCong.Next(congratulation.Count)];
-                    return $"Правильно!\nТы уже запмонил перевод {checkWinCountWord} слов!\n{answer}";
+                    return $"Правильно!\nТы уже запомнил перевод {checkWinCountWord} слов (фраз)!\n{answer}";
                 }
                 else
                     return "Правильно!";
@@ -196,9 +204,9 @@ namespace EnglishTreiner
         {
             var check = tutor.AddWord(eng.ToLower(), transl.ToLower());
             if (check)
-                return "Слово добавленно в словарь!";
+                return "Слово (фраза) добавленно в словарь!";
             else
-                return "Такое слово уже есть в словаре!";
+                return "Такое слово (фраза) уже есть в словаре!";
         }
 
         static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)

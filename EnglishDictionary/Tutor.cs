@@ -19,6 +19,18 @@ namespace EnglishTreiner
             _dictRus = _storage.GetAllWords(false);
             _knowWord = _storage.GetKnowWord();
         }
+        public int GetHowKnowWord
+        {
+            get
+            { return _knowWord.Count; }
+        }
+
+        public int GetHowWordInDict 
+        { 
+            get
+            { return _dictEng.Count; }  
+        }
+
         public bool AddWord(string wordForTranslate, string translate)
         {   //если еще нет такого слова
             if (!_dictEng.ContainsKey(wordForTranslate) && !_dictRus.ContainsKey(translate))
@@ -41,14 +53,14 @@ namespace EnglishTreiner
                 if (_dictEng.ContainsKey(wordForTranslate.ToLower()))
                     return _dictEng[wordForTranslate.ToLower()];
                 else
-                    return "Такого слова еще нет в словаре!";
+                    return "Такого слова (фразы) еще нет в словаре!";
             }
             else
             { 
                 if (_dictRus.ContainsKey(wordForTranslate.ToLower()))
                     return _dictRus[wordForTranslate.ToLower()];
                 else
-                    return "Такого слова еще нет в словаре!";
+                    return "Такого слова (фразы) еще нет в словаре!";
             }
         }
 
@@ -78,29 +90,29 @@ namespace EnglishTreiner
                 
         }
 
-        public string GetRandomEngOrRusWord(bool lang)
+        public string GetRandomEngOrRusWord(bool isEnglish)
         {
-            var r = _random.Next(0, _dictEng.Count);
             //  Если нужно английское слово, работаем с английским словарем
-            if (lang)
-            {
-                var keys = new List<string>(_dictEng.Keys);
-                //  Если это слово уже выучили
-                if (_knowWord.Contains(keys[r]))
-                    return GetRandomEngOrRusWord(lang);
-                else
-                    return keys[r];
-            }
+            if (isEnglish)
+                return GetRandomWord(_dictEng);
             //  Если русское, то с русским
             else
+                return GetRandomWord(_dictRus);
+        }
+
+        private string GetRandomWord(Dictionary<string, string> dict)
+        {
+            var keys = new List<string>(dict.Keys);
+            for (int i = 0; i < dict.Count; i++)
             {
-                var keys = new List<string>(_dictRus.Keys);
+                var r = _random.Next(0, dict.Count);
                 //  Если это слово уже выучили
                 if (_knowWord.Contains(keys[r]))
-                    return GetRandomEngOrRusWord(lang);
+                    continue;
                 else
                     return keys[r];
             }
+            return String.Empty;           
         }
 
         //  Добавляем в список слова которые уже знаем
@@ -108,11 +120,6 @@ namespace EnglishTreiner
         {
             _knowWord.Add(knowWord);
             _storage.AddKnowWord(knowWord);
-        }
-
-        public int GetCountKnowWord()
-        {
-            return _knowWord.Count; 
         }
     }
 }
