@@ -102,17 +102,26 @@ namespace EnglishTreiner
 
         private string GetRandomWord(Dictionary<string, string> dict)
         {
-            var keys = new List<string>(dict.Keys);
-            for (int i = 0; i < dict.Count; i++)
+            var listUnknowWords = MakeListUnknowWords(dict);
+            if (listUnknowWords.Count > 0)
             {
-                var r = _random.Next(0, dict.Count);
-                //  Если это слово уже выучили
-                if (_knowWord.Contains(keys[r]))
-                    continue;
-                else
-                    return keys[r];
+                var randIndex = _random.Next(0, listUnknowWords.Count-1);
+                return listUnknowWords[randIndex];
             }
-            return String.Empty;           
+            else
+                return String.Empty;
+        }
+
+        //  Создаем список с еще не выученными словами
+        private List<string> MakeListUnknowWords(Dictionary<string, string> dict)
+        {
+            List<string> listUnknowWord = new List<string>(); 
+            foreach (var word in dict)
+            {
+                if (!_knowWord.Contains(word.Key))
+                    listUnknowWord.Add(word.Key);
+            }
+            return listUnknowWord;
         }
 
         //  Добавляем в список слова которые уже знаем
